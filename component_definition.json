@@ -1,0 +1,13 @@
+{
+  "directory": "pnnl_load_orchestration",
+  "execute_function": "python -m pnnl_load_orchestration.cli",
+  "static_inputs": [
+    {
+      "port_id": "config_file",
+      "type": "str",
+      "description": "Path to orchestration JSON configuration file"
+    }
+  ],
+  "dynamic_inputs": [],
+  "dynamic_outputs": []
+}

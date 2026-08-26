@@ -1,0 +1,20 @@
+{
+  "model_dir": "/path/to/opendss/model",
+  "master_file": "IEEE123Master.dss",
+  "candidate_buses": ["83", "65", "47", "48", "76"],
+  "load_spec": {
+    "kw_total": 1700.0,
+    "kvar_total": 0.0,
+    "kv_base": 2.4,
+    "conn": "Wye",
+    "model_type": 1,
+    "load_name_prefix": "DC"
+  },
+  "bounds": {
+    "v_min": 0.95,
+    "v_max": 1.05
+  },
+  "output_dir": "./output/orchestrated_model",
+  "in_place": false,
+  "strategy": "first_feasible"
+}
