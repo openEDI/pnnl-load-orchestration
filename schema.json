@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "LoadSpec": {
+      "description": "Specification of the additional load to be orchestrated.\n\nAttributes:\n    kw_total: Total active power in kW to be split across phases.\n    kvar_total: Total reactive power in kvar to be split across phases.\n    kv_base: Voltage base (line-to-neutral or line-to-line depending on connection) in kV.\n    conn: Connection type ('Wye' or 'Delta').\n    model_type: OpenDSS load model (e.g. 1 = constant PQ).\n    load_name_prefix: Prefix string for generated load object names in OpenDSS.",
+      "properties": {
+        "kw_total": {
+          "description": "Total active power (kW) to allocate",
+          "exclusiveMinimum": 0,
+          "title": "Kw Total",
+          "type": "number"
+        },
+        "kvar_total": {
+          "default": 0.0,
+          "description": "Total reactive power (kvar) to allocate",
+          "minimum": 0,
+          "title": "Kvar Total",
+          "type": "number"
+        },
+        "kv_base": {
+          "default": 2.4,
+          "description": "Base voltage in kV (e.g. 2.4 kV for 4.16 kV Wye system)",
+          "exclusiveMinimum": 0,
+          "title": "Kv Base",
+          "type": "number"
+        },
+        "conn": {
+          "default": "Wye",
+          "description": "Load connection type",
+          "enum": [
+            "Wye",
+            "Delta"
+          ],
+          "title": "Conn",
+          "type": "string"
+        },
+        "model_type": {
+          "default": 1,
+          "description": "OpenDSS Load model type (1=const PQ)",
+          "title": "Model Type",
+          "type": "integer"
+        },
+        "load_name_prefix": {
+          "default": "DC",
+          "description": "Prefix for allocated load element names",
+          "title": "Load Name Prefix",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kw_total"
+      ],
+      "title": "LoadSpec",
+      "type": "object"
+    },
+    "VoltageBounds": {
+      "description": "Voltage boundary constraints in per-unit (p.u.).\n\nAttributes:\n    v_min: Minimum allowable per-unit voltage (default 0.95 ANSI C84.1).\n    v_max: Maximum allowable per-unit voltage (default 1.05 ANSI C84.1).",
+      "properties": {
+        "v_min": {
+          "default": 0.95,
+          "description": "Minimum acceptable voltage in p.u.",
+          "exclusiveMinimum": 0,
+          "title": "V Min",
+          "type": "number"
+        },
+        "v_max": {
+          "default": 1.05,
+          "description": "Maximum acceptable voltage in p.u.",
+          "exclusiveMinimum": 0,
+          "title": "V Max",
+          "type": "number"
+        }
+      },
+      "title": "VoltageBounds",
+      "type": "object"
+    }
+  },
+  "description": "Primary configuration model and OEDISI ComponentParameters for load orchestration.\n\nAttributes:\n    name: Optional component or scenario name.\n    model_dir: Directory containing OpenDSS model files.\n    master_file: Name of the master OpenDSS file.\n    candidate_buses: List of candidate bus IDs to evaluate.\n    load_spec: Specification of the load to place.\n    bounds: Voltage boundary constraints.\n    bus_phases: Optional explicit mapping of bus ID to active phase list [1, 2, 3].\n                If omitted, phases are discovered dynamically from the circuit.\n    output_dir: Optional destination directory for modified OpenDSS files.\n    in_place: Whether to modify source files in place (mutually exclusive with output_dir).\n    strategy: Candidate evaluation strategy ('first_feasible', 'evaluate_all', 'rank_by_margin').\n    plot_results: Whether to generate plots (feeder map, candidate heatmap, voltage profile).",
+  "properties": {
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional component/scenario name",
+      "title": "Name"
+    },
+    "model_dir": {
+      "description": "Path to OpenDSS model directory",
+      "format": "path",
+      "title": "Model Dir",
+      "type": "string"
+    },
+    "master_file": {
+      "default": "master.dss",
+      "description": "Master DSS file name",
+      "title": "Master File",
+      "type": "string"
+    },
+    "candidate_buses": {
+      "description": "Candidate bus IDs in evaluation order",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Candidate Buses",
+      "type": "array"
+    },
+    "load_spec": {
+      "$ref": "#/$defs/LoadSpec",
+      "description": "Load specification"
+    },
+    "bounds": {
+      "$ref": "#/$defs/VoltageBounds",
+      "description": "Voltage bounds"
+    },
+    "bus_phases": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional manual bus to phases mapping (e.g. {'47': [1, 2, 3], '83': [3]})",
+      "title": "Bus Phases"
+    },
+    "output_dir": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Output directory for modified OpenDSS files",
+      "title": "Output Dir"
+    },
+    "in_place": {
+      "default": false,
+      "description": "Modify OpenDSS model in place",
+      "title": "In Place",
+      "type": "boolean"
+    },
+    "strategy": {
+      "default": "first_feasible",
+      "description": "Evaluation strategy",
+      "enum": [
+        "first_feasible",
+        "evaluate_all",
+        "rank_by_margin"
+      ],
+      "title": "Strategy",
+      "type": "string"
+    },
+    "plot_results": {
+      "default": true,
+      "description": "Generate visualizations and candidate heatmaps",
+      "title": "Plot Results",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "model_dir",
+    "candidate_buses",
+    "load_spec"
+  ],
+  "title": "ComponentParameters",
+  "type": "object"
+}

@@ -1,5 +1,6 @@
 """Pydantic schemas and configuration models for load orchestration."""
 
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -45,10 +46,11 @@ class VoltageBounds(BaseModel):
         return self
 
 
-class OrchestrationConfig(BaseModel):
-    """Primary configuration model for the load orchestration preprocessing component.
+class ComponentParameters(BaseModel):
+    """Primary configuration model and OEDISI ComponentParameters for load orchestration.
 
     Attributes:
+        name: Optional component or scenario name.
         model_dir: Directory containing OpenDSS model files.
         master_file: Name of the master OpenDSS file.
         candidate_buses: List of candidate bus IDs to evaluate.
@@ -59,21 +61,26 @@ class OrchestrationConfig(BaseModel):
         output_dir: Optional destination directory for modified OpenDSS files.
         in_place: Whether to modify source files in place (mutually exclusive with output_dir).
         strategy: Candidate evaluation strategy ('first_feasible', 'evaluate_all', 'rank_by_margin').
+        plot_results: Whether to generate plots (feeder map, candidate heatmap, voltage profile).
     """
 
+    name: str | None = Field(default=None, description="Optional component/scenario name")
     model_dir: Path = Field(description="Path to OpenDSS model directory")
     master_file: str = Field(default="master.dss", description="Master DSS file name")
     candidate_buses: list[str] = Field(min_length=1, description="Candidate bus IDs in evaluation order")
     load_spec: LoadSpec = Field(description="Load specification")
     bounds: VoltageBounds = Field(default_factory=VoltageBounds, description="Voltage bounds")
     bus_phases: dict[str, list[int]] | None = Field(
-        default=None, description="Optional manual bus to phases mapping (e.g. {'47': [1, 2, 3], '83': [3]})"
+        default=None,
+        description="Optional manual bus to phases mapping (e.g. {'47': [1, 2, 3], '83': [3]})",
     )
     output_dir: Path | None = Field(default=None, description="Output directory for modified OpenDSS files")
     in_place: bool = Field(default=False, description="Modify OpenDSS model in place")
     strategy: Literal["first_feasible", "evaluate_all", "rank_by_margin"] = Field(
-        default="first_feasible", description="Evaluation strategy"
+        default="first_feasible",
+        description="Evaluation strategy",
     )
+    plot_results: bool = Field(default=True, description="Generate visualizations and candidate heatmaps")
 
     @field_validator("candidate_buses", mode="before")
     @classmethod
@@ -90,7 +97,7 @@ class OrchestrationConfig(BaseModel):
         return None
 
     @model_validator(mode="after")
-    def validate_io_targets(self) -> "OrchestrationConfig":
+    def validate_io_targets(self) -> "ComponentParameters":
         """Validate input directory exists and output configuration is valid."""
         if not self.model_dir.exists():
             raise ValueError(f"model_dir does not exist: {self.model_dir}")
@@ -107,6 +114,28 @@ class OrchestrationConfig(BaseModel):
             raise ValueError("Cannot specify both in_place=True and output_dir simultaneously")
 
         return self
+
+    @classmethod
+    def generate_json_schema(cls, target_path: Path) -> Path:
+        """Generate schema.json file from ComponentParameters.
+
+        Args:
+            target_path: Path to write schema.json.
+
+        Returns:
+            Resolved Path of written schema.
+        """
+        target_path = target_path.resolve()
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        schema_dict = cls.model_json_schema()
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(schema_dict, f, indent=2)
+            f.write("\n")
+        return target_path
+
+
+# Alias for backward compatibility
+OrchestrationConfig = ComponentParameters
 
 
 class BusEvaluationResult(BaseModel):
@@ -138,7 +167,7 @@ class OrchestrationSummary(BaseModel):
         load_spec: The load specification that was applied.
         evaluations: List of evaluations for all tested candidate buses.
         output_directory: Directory where modified model or results are stored.
-        generated_files: List of generated or modified DSS file paths.
+        generated_files: List of generated or modified DSS and image file paths.
     """
 
     success: bool

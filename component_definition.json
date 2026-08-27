@@ -1,11 +1,62 @@
 {
-  "directory": "pnnl_load_orchestration",
+  "directory": "pnnl-load-orchestration",
   "execute_function": "python -m pnnl_load_orchestration.cli",
   "static_inputs": [
     {
-      "port_id": "config_file",
+      "port_id": "model_dir",
       "type": "str",
-      "description": "Path to orchestration JSON configuration file"
+      "description": "Path to OpenDSS model directory"
+    },
+    {
+      "port_id": "master_file",
+      "type": "str",
+      "description": "Master DSS file name",
+      "default": "master.dss"
+    },
+    {
+      "port_id": "candidate_buses",
+      "type": "list[str]",
+      "description": "Candidate bus IDs in evaluation order"
+    },
+    {
+      "port_id": "load_spec",
+      "type": "LoadSpec",
+      "description": "Load specification containing kw_total, kvar_total, kv_base, conn, model_type, load_name_prefix"
+    },
+    {
+      "port_id": "bounds",
+      "type": "VoltageBounds",
+      "description": "Voltage boundary constraints containing v_min and v_max"
+    },
+    {
+      "port_id": "bus_phases",
+      "type": "dict[str, list[int]]",
+      "description": "Optional manual mapping of bus IDs to phases (e.g. {'47': [1, 2, 3], '83': [3]})",
+      "optional": true
+    },
+    {
+      "port_id": "output_dir",
+      "type": "str",
+      "description": "Output directory for modified OpenDSS files",
+      "optional": true
+    },
+    {
+      "port_id": "in_place",
+      "type": "bool",
+      "description": "Modify OpenDSS model in place",
+      "default": false
+    },
+    {
+      "port_id": "strategy",
+      "type": "str",
+      "description": "Evaluation strategy (first_feasible, evaluate_all, rank_by_margin)",
+      "default": "first_feasible"
+    },
+    {
+      "port_id": "plot_results",
+      "type": "bool",
+      "description": "Generate visualizations and candidate heatmaps",
+      "default": true
     }
   ],
   "dynamic_inputs": [],
