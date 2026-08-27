@@ -219,4 +219,6 @@ __marimo__/
 
 # Outputs
 output/
+outputs/*
+!outputs/.gitkeep
 test_output/

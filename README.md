@@ -2,17 +2,20 @@
 
 Preprocessing component for large load orchestration (e.g. data centers, EV fleet hubs) in constrained power distribution networks.
 
-This tool evaluates candidate bus locations on an OpenDSS network model, evaluates power flow and nodal voltage constraints against specified voltage bounds (ANSI C84.1), and generates an updated OpenDSS circuit model with the allocated load.
+This tool evaluates candidate bus locations on an OpenDSS network model, evaluates power flow and nodal voltage constraints against specified voltage bounds (ANSI C84.1), and generates an updated OpenDSS circuit model along with visualizations (distribution feeder line voltage heatmap and voltage profile comparison).
 
 ---
 
 ## Features
 
-- **No Runtime Federate Overhead**: Designed as an offline/preprocessing component aligned with OEDISI component structures without the HELICS or FastAPI server loop.
-- **Config-File Driven**: Single JSON configuration input specifying model paths, candidate buses, load requirements, voltage bounds, and output options.
-- **Dynamic Phase Discovery**: Automatically discovers connected phases on candidate buses directly from the compiled OpenDSS circuit (with optional manual override).
-- **Automated OpenDSS Model Generation**: Generates dedicated load definition DSS files and updates `master.dss` in the destination directory or in place.
-- **Structured JSON Summaries**: Outputs execution details, minimum/maximum voltage bounds per bus, and violating nodes to `orchestration_summary.json`.
+- **OEDISI Component Aligned**: Standard `component_definition.json` and auto-generated `schema.json` from `ComponentParameters`.
+- **No Runtime Federate Overhead**: Designed as an offline/preprocessing component without HELICS or FastAPI server loops.
+- **Config & Scenario Driven**: Single JSON configuration input under `scenarios/` specifying model paths, candidate buses, load specs, bounds, and outputs.
+- **Dynamic Phase Discovery**: Discovers connected phases on candidate buses directly from the compiled OpenDSS circuit (with optional manual override).
+- **Rich Visualizations**:
+  - `feeder_voltage_heatmap.png`: Feeder network topology with distribution lines and buses heatmapped by per-unit voltage magnitude, overlaid with candidate bus compliance tags and the selected load placement.
+  - `voltage_profile_comparison.png`: Feeder-wide nodal voltage profile comparing the base circuit against the orchestrated circuit with ANSI C84.1 limit lines.
+- **Structured Outputs**: Model DSS files, `orchestration_summary.json`, and figures saved to `outputs/<scenario_name>/`.
 
 ---
 
@@ -33,18 +36,13 @@ uv sync --all-extras
 
 ## Quick Start
 
-### 1. Generate a Template Configuration
+### 1. View or Edit a Scenario Configuration
 
-```bash
-uv run pnnl-load-orchestration --init-config config.json
-```
-
-### 2. Configure Your Run
-
-Edit `config.json`:
+Example scenario in `scenarios/ieee123_datacenter.json`:
 
 ```json
 {
+  "name": "ieee123_datacenter_orchestration",
   "model_dir": "/path/to/Powergrid-Models/models/feeders/OpenDSS/IEEE/IEEE123",
   "master_file": "IEEE123Master.dss",
   "candidate_buses": ["83", "65", "47", "48", "76"],
@@ -60,17 +58,25 @@ Edit `config.json`:
     "v_min": 0.95,
     "v_max": 1.05
   },
-  "output_dir": "./output/ieee123_orchestrated",
+  "output_dir": "outputs/ieee123_datacenter",
   "in_place": false,
-  "strategy": "first_feasible"
+  "strategy": "first_feasible",
+  "plot_results": true
 }
 ```
 
-### 3. Run Load Orchestration
+### 2. Run Load Orchestration
 
 ```bash
-uv run pnnl-load-orchestration config.json
+uv run pnnl-load-orchestration scenarios/ieee123_datacenter.json
 ```
+
+Outputs will be saved in `outputs/ieee123_datacenter/`:
+- `IEEE123Master.dss` (updated with `Redirect orchestrated_load_76.dss`)
+- `orchestrated_load_76.dss` (new load definitions)
+- `orchestration_summary.json` (machine-readable run summary)
+- `feeder_voltage_heatmap.png` (distribution network line voltage heatmap)
+- `voltage_profile_comparison.png` (before/after nodal voltage profiles)
 
 ---
 
@@ -79,14 +85,14 @@ uv run pnnl-load-orchestration config.json
 ### Running Tests
 
 ```bash
-# Run unit and integration tests
+# Run all unit and integration tests
 uv run pytest -v
 
-# Run only unit tests
-uv run pytest tests/unit
+# Run schema and component definition verification
+uv run pytest tests/unit/test_schema.py -v
 
-# Run integration tests with IEEE 123
-uv run pytest tests/integration
+# Run plotting tests
+uv run pytest tests/unit/test_plotting.py -v
 ```
 
 ### Code Quality & Pre-commit

@@ -1,5 +1,6 @@
 {
-  "model_dir": "/path/to/opendss/model",
+  "name": "ieee123_datacenter_orchestration",
+  "model_dir": "/home/tslay/dev/Powergrid-Models/models/feeders/OpenDSS/IEEE/IEEE123",
   "master_file": "IEEE123Master.dss",
   "candidate_buses": ["83", "65", "47", "48", "76"],
   "load_spec": {
@@ -14,7 +15,8 @@
     "v_min": 0.95,
     "v_max": 1.05
   },
-  "output_dir": "./output/orchestrated_model",
+  "output_dir": "outputs/ieee123_datacenter",
   "in_place": false,
-  "strategy": "first_feasible"
+  "strategy": "first_feasible",
+  "plot_results": true
 }
