@@ -4,9 +4,10 @@ import logging
 
 from .dss_engine import OpenDSSEngine
 from .io import append_load_to_master, prepare_output_directory, save_summary, write_load_definitions
+from .plotting import plot_feeder_voltage_heatmap, plot_voltage_profiles
 from .schemas import (
     BusEvaluationResult,
-    OrchestrationConfig,
+    ComponentParameters,
     OrchestrationSummary,
 )
 
@@ -16,11 +17,11 @@ logger = logging.getLogger(__name__)
 class LoadAllocator:
     """Orchestrates candidate bus evaluation, constraint checking, and OpenDSS model updates."""
 
-    def __init__(self, config: OrchestrationConfig) -> None:
+    def __init__(self, config: ComponentParameters) -> None:
         """Initialize the LoadAllocator with configuration.
 
         Args:
-            config: OrchestrationConfig instance.
+            config: ComponentParameters / OrchestrationConfig instance.
         """
         self.config = config
 
@@ -39,6 +40,9 @@ class LoadAllocator:
         master_path = work_dir / self.config.master_file
         engine = OpenDSSEngine(master_path)
         engine.compile()
+
+        # Capture base voltage profile
+        base_voltages = engine.extract_nodal_voltages()
 
         evaluations: list[BusEvaluationResult] = []
         selected_bus: str | None = None
@@ -147,6 +151,10 @@ class LoadAllocator:
             append_load_to_master(master_path, load_filename)
             generated_files.append(str(master_path))
 
+            # Recompile to extract final voltage profile
+            engine.compile()
+            final_voltages = engine.extract_nodal_voltages()
+
             summary = OrchestrationSummary(
                 success=True,
                 allocated_bus=selected_bus,
@@ -157,6 +165,7 @@ class LoadAllocator:
             )
         else:
             logger.warning("No candidate bus satisfied the voltage constraints.")
+            final_voltages = base_voltages
             summary = OrchestrationSummary(
                 success=False,
                 allocated_bus=None,
@@ -165,6 +174,33 @@ class LoadAllocator:
                 output_directory=str(work_dir),
                 generated_files=[],
             )
+
+        # Generate plots if requested
+        if self.config.plot_results:
+            try:
+                map_path = work_dir / "feeder_voltage_heatmap.png"
+                profile_path = work_dir / "voltage_profile_comparison.png"
+
+                plot_feeder_voltage_heatmap(
+                    self.config.model_dir,
+                    evaluations,
+                    selected_bus,
+                    self.config.load_spec,
+                    self.config.bounds,
+                    final_voltages,
+                    map_path,
+                )
+                plot_voltage_profiles(
+                    base_voltages,
+                    final_voltages,
+                    self.config.bounds,
+                    selected_bus,
+                    profile_path,
+                )
+
+                summary.generated_files.extend([str(map_path), str(profile_path)])
+            except Exception as plot_err:
+                logger.warning("Failed generating visual plots: %s", plot_err)
 
         # Write summary JSON
         summary_path = work_dir / "orchestration_summary.json"
