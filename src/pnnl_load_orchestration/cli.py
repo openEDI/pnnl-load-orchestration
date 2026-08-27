@@ -7,42 +7,9 @@ import sys
 from pathlib import Path
 
 from .allocator import LoadAllocator
-from .schemas import OrchestrationConfig
+from .schemas import ComponentParameters
 
 logger = logging.getLogger("pnnl_load_orchestration")
-
-
-def generate_template_config(target_path: Path) -> None:
-    """Generate a starter JSON configuration template.
-
-    Args:
-        target_path: Destination path for sample configuration JSON.
-    """
-    sample = {
-        "model_dir": "/path/to/opendss/model",
-        "master_file": "master.dss",
-        "candidate_buses": ["83", "65", "47", "48", "76"],
-        "load_spec": {
-            "kw_total": 1700.0,
-            "kvar_total": 0.0,
-            "kv_base": 2.4,
-            "conn": "Wye",
-            "model_type": 1,
-            "load_name_prefix": "DC",
-        },
-        "bounds": {
-            "v_min": 0.95,
-            "v_max": 1.05,
-        },
-        "output_dir": "./output/orchestrated_model",
-        "in_place": False,
-        "strategy": "first_feasible",
-    }
-    target_path = target_path.resolve()
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(target_path, "w", encoding="utf-8") as f:
-        json.dump(sample, f, indent=2)
-    print(f"Generated sample configuration template at: {target_path}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
         "config_file",
         nargs="?",
         type=Path,
-        help="Path to JSON configuration file.",
+        help="Path to JSON scenario/configuration file matching schema.json.",
     )
     parser.add_argument(
         "-c",
@@ -72,10 +39,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to JSON configuration file (alternative to positional argument).",
     )
     parser.add_argument(
-        "--init-config",
+        "--generate-schema",
         type=Path,
         metavar="PATH",
-        help="Generate a starter configuration template JSON file at PATH.",
+        help="Export the JSON Schema definition to the specified PATH and exit.",
     )
     parser.add_argument(
         "--log-level",
@@ -91,14 +58,15 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    if args.init_config:
-        generate_template_config(args.init_config)
+    if args.generate_schema:
+        ComponentParameters.generate_json_schema(args.generate_schema)
+        print(f"Generated schema.json at: {args.generate_schema.resolve()}")
         return 0
 
     config_path = args.config_file or args.config_opt
     if not config_path:
         parser.print_help()
-        print("\nError: Please provide a configuration file path or run with --init-config <path>.")
+        print("\nError: Please provide a configuration file path or run with --generate-schema <path>.")
         return 1
 
     if not config_path.exists():
@@ -109,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         with open(config_path, encoding="utf-8") as f:
             config_data = json.load(f)
 
-        config = OrchestrationConfig.model_validate(config_data)
+        config = ComponentParameters.model_validate(config_data)
         logger.info("Loaded configuration from: %s", config_path.resolve())
 
         allocator = LoadAllocator(config)
